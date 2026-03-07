@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Startup Intelligence Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root {
+    --bg: #050a0f;
+    --surface: #0d1520;
+    --surface2: #111c2e;
+    --border: #1a2840;
+    --border2: #243450;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --accent3: #22d3ee;
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --text-dim: #334155;
+    --green: #10b981;
+    --orange: #f59e0b;
+    --red: #ef4444;
+    --purple: #a78bfa;
+    --sidebar: 240px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    display: flex;
+    min-height: 100vh;
+  }
+  /* SIDEBAR */
+  .sidebar {
+    width: var(--sidebar);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+    padding: 0;
+  }
+  .sidebar-brand {
+    padding: 24px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand-icon {
+    width: 30px;
+    height: 30px;
+    background: var(--accent);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    flex-shrink: 0;
+    animation: spin-slow 8s linear infinite;
+  }
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .brand-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    line-height: 1.4;
+  }
+  .sidebar-nav {
+    padding: 16px 0;
+    flex: 1;
+  }
+  .nav-section {
+    padding: 0 12px;
+    margin-bottom: 24px;
+  }
+  .nav-section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    padding: 0 8px;
+    margin-bottom: 8px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: none;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(0,229,255,0.08); color: var(--accent); }
+  .nav-item .icon { font-size: 14px; width: 20px; text-align: center; }
+  .nav-badge {
+    margin-left: auto;
+    padding: 2px 7px;
+    background: rgba(0,229,255,0.1);
+    border-radius: 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--accent);
+  }
+  .sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+    50% { opacity: 0.8; box-shadow: 0 0 0 4px rgba(16,185,129,0); }
+  }
+  /* MAIN */
+  .main {
+    margin-left: var(--sidebar);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  /* TOPBAR */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: rgba(5,10,15,0.9);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+  .topbar-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    flex: 1;
+  }
+  .topbar-title span {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    font-weight: 300;
+    margin-left: 12px;
+  }
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .refresh-btn {
+    padding: 7px 16px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .time-chip {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  /* CONTENT */
+  .content {
+    padding: 32px;
+    flex: 1;
+  }
+  /* KPIS */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .kpi-card:hover { border-color: var(--border2); }
+  .kpi-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+  }
+  .kpi-card.cyan::after { background: var(--accent); }
+  .kpi-card.purple::after { background: var(--purple); }
+  .kpi-card.green::after { background: var(--green); }
+  .kpi-card.orange::after { background: var(--orange); }
+  .kpi-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .kpi-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 40px;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .kpi-card.cyan .kpi-value { color: var(--accent); }
+  .kpi-card.purple .kpi-value { color: var(--purple); }
+  .kpi-card.green .kpi-value { color: var(--green); }
+  .kpi-card.orange .kpi-value { color: var(--orange); }
+  .kpi-change {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .kpi-change .up { color: var(--green); }
+  /* GRID LAYOUT */
+  .grid-2-1 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .grid-1-1 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    position: relative;
+  }
+  .card-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 17px;
+  }
+  .card-subtitle {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+  }
+  .card-badge {
+    padding: 4px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .card-badge.live {
+    background: rgba(16,185,129,0.1);
+    border: 1px solid rgba(16,185,129,0.3);
+    color: var(--green);
+  }
+  .card-badge.info {
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.2);
+    color: var(--accent);
+  }
+  .card-body { padding: 24px; }
+  /* CHART CONTAINERS */
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+  }
+  .chart-wrap canvas { width: 100% !important; }
+  /* TREND BARS */
+  .trend-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .trend-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 2px;
+    transition: background 0.15s;
+  }
+  .trend-row:hover { background: var(--surface2); }
+  .trend-sector {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    width: 110px;
+    flex-shrink: 0;
+  }
+  .trend-track {
+    flex: 1;
+    height: 8px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .trend-fill {
+    height: 100%;
+    border-radius: 1px;
+    transition: width 1.2s cubic-bezier(0.16,1,0.3,1);
+    width: 0;
+  }
+  .trend-score {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    width: 28px;
+    text-align: right;
+  }
+  .trend-delta {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    width: 36px;
+    text-align: right;
+  }
+  .delta-up { color: var(--green); }
+  .delta-neutral { color: var(--text-muted); }
+  /* MAP */
+  #map {
+    height: 380px;
+    width: 100%;
+    background: var(--surface2);
+    border-radius: 0;
+  }
+  .leaflet-container {
+    background: #0a1525 !important;
+    font-family: 'DM Mono', monospace !important;
+  }
+  /* NEWS FEED */
+  .news-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .news-item {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .news-item:last-child { border-bottom: none; }
+  .news-item:hover { background: var(--surface2); }
+  .news-sector-tag {
+    padding: 3px 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .news-content {}
+  .news-title {
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.5;
+    margin-bottom: 4px;
+  }
+  .news-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    display: flex;
+    gap: 10px;
+  }
+  .news-type {
+    padding: 1px 6px;
+    border-radius: 2px;
+    font-size: 9px;
+  }
+  /* JOBS TABLE */
+  .jobs-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .jobs-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    text-align: left;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .jobs-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    vertical-align: middle;
+  }
+  .jobs-table tr:last-child td { border-bottom: none; }
+  .jobs-table tr:hover td { background: var(--surface2); }
+  .job-company { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted); }
+  .job-skills { display: flex; gap: 4px; flex-wrap: wrap; }
+  .skill-chip {
+    padding: 2px 6px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--text-muted);
+    border-radius: 2px;
+  }
+  /* PREDICTION CARD */
+  .prediction-card {
+    background: linear-gradient(135deg, rgba(0,229,255,0.06) 0%, rgba(124,58,237,0.06) 100%);
+    border: 1px solid rgba(0,229,255,0.2);
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .prediction-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(0,229,255,0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .prediction-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .prediction-label::before {
+    content: '◆';
+    font-size: 8px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  .prediction-text {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    line-height: 1.4;
+    margin-bottom: 20px;
+  }
+  .prediction-sectors {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .pred-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .pred-rank {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    width: 20px;
+  }
+  .pred-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    flex: 1;
+  }
+  .pred-growth {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .pred-bar {
+    width: 80px;
+    height: 4px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .pred-bar-fill {
+    height: 100%;
+    border-radius: 1px;
+    background: var(--accent);
+  }
+  /* SECTOR COLOR MAP */
+  .sc-AI { background: rgba(0,229,255,0.12); color: #00e5ff; }
+  .sc-DevTools { background: rgba(34,211,238,0.12); color: #22d3ee; }
+  .sc-Fintech { background: rgba(167,139,250,0.12); color: #a78bfa; }
+  .sc-Cybersecurity { background: rgba(52,211,153,0.12); color: #34d399; }
+  .sc-Health { background: rgba(248,113,113,0.12); color: #f87171; }
+  .sc-Robotics { background: rgba(251,191,36,0.12); color: #fbbf24; }
+  .sc-Climate { background: rgba(134,239,172,0.12); color: #86efac; }
+  /* LOADING */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    transition: opacity 0.5s;
+  }
+  .loading-logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    margin-bottom: 32px;
+    color: var(--accent);
+  }
+  .loading-bar-track {
+    width: 240px;
+    height: 2px;
+    background: var(--border);
+    border-radius: 1px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .loading-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 1px;
+    animation: load 1.8s ease-out forwards;
+  }
+  @keyframes load {
+    from { width: 0; }
+    to { width: 100%; }
+  }
+  .loading-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    animation: blink 1s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  @media (max-width: 1200px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    .grid-2-1 { grid-template-columns: 1fr; }
+    .grid-1-1 { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; }
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loader">
+  <div class="loading-logo">Intelligence Map</div>
+  <div class="loading-bar-track"><div class="loading-bar-fill"></div></div>
+  <div class="loading-text">Fetching trend signals...</div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon"></div>
+    <div class="brand-text">Startup<br>Intelligence Map</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-section-label">Main</div>
+      <a href="/" class="nav-item"><span class="icon">◇</span> Home</a>
+      <a href="/dashboard" class="nav-item active"><span class="icon">▦</span> Dashboard</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">Data</div>
+      <div class="nav-item" onclick="scrollTo('trends-section')"><span class="icon">↗</span> Trends <span class="nav-badge">7</span></div>
+      <div class="nav-item" onclick="scrollTo('map-section')"><span class="icon">◎</span> Map</div>
+      <div class="nav-item" onclick="scrollTo('news-section')"><span class="icon">◈</span> News Feed</div>
+      <div class="nav-item" onclick="scrollTo('jobs-section')"><span class="icon">⌧</span> Jobs</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">Insights</div>
+      <div class="nav-item" onclick="scrollTo('prediction-section')"><span class="icon">◆</span> AI Prediction</div>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="status-indicator">
+      <div class="status-dot"></div>
+      <span>Live · Updated just now</span>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title">
+      Analytics Dashboard
+      <span id="lastUpdated">Loading...</span>
+    </div>
+    <div class="topbar-actions">
+      <div class="time-chip" id="clockDisplay">--:--</div>
+      <button class="refresh-btn" onclick="loadAllData()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- KPIs -->
+    <div class="kpis" id="kpis">
+      <div class="kpi-card cyan">
+        <div class="kpi-label">Top Sector Score</div>
+        <div class="kpi-value" id="kpi-top">87</div>
+        <div class="kpi-change">AI leads · <span class="up">↑ +5 this month</span></div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-label">Sectors Tracked</div>
+        <div class="kpi-value">7</div>
+        <div class="kpi-change">All active · <span class="up">↑ Real-time</span></div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Job Postings</div>
+        <div class="kpi-value" id="kpi-jobs">27</div>
+        <div class="kpi-change">Active listings · <span class="up">↑ +40%</span></div>
+      </div>
+      <div class="kpi-card orange">
+        <div class="kpi-label">News Articles</div>
+        <div class="kpi-value" id="kpi-news">15</div>
+        <div class="kpi-change">This month · <span class="up">↑ Tech Pulse</span></div>
+      </div>
+    </div>
+
+    <!-- TRENDS + PREDICTION -->
+    <div class="grid-2-1" id="trends-section">
+      <!-- TREND BAR CHART -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Sector Trend Scores</div>
+            <div class="card-subtitle">COMPOSITE SCORE — GITHUB + JOBS + NEWS</div>
+          </div>
+          <div class="card-badge live">● Live</div>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap" style="height: 280px;">
+            <canvas id="barChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <!-- PREDICTION -->
+      <div class="prediction-card" id="prediction-section">
+        <div class="prediction-label">AI Prediction Engine</div>
+        <div class="prediction-text" id="predictionText">Loading forecast...</div>
+        <div class="prediction-sectors" id="predictionList">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- RADAR + TREND BARS -->
+    <div class="grid-1-1">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Momentum Radar</div>
+            <div class="card-subtitle">TECHNOLOGY VELOCITY BY SECTOR</div>
+          </div>
+          <div class="card-badge info">Composite</div>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap" style="height: 260px;">
+            <canvas id="radarChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Trend Breakdown</div>
+            <div class="card-subtitle">RANKED BY COMPOSITE SCORE</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="trend-bars" id="trendBars">
+            <!-- populated by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORICAL LINE CHART -->
+    <div class="card" style="margin-bottom: 16px;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Trend History — Last 7 Months</div>
+          <div class="card-subtitle">COMPOSITE SCORE OVER TIME</div>
+        </div>
+        <div class="card-badge info">Historical</div>
+      </div>
+      <div class="card-body">
+        <div class="chart-wrap" style="height: 240px;">
+          <canvas id="lineChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAP -->
+    <div class="card" style="margin-bottom: 16px;" id="map-section">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Global Startup Hotspot Map</div>
+          <div class="card-subtitle">STARTUP ACTIVITY BY CITY</div>
+        </div>
+        <div class="card-badge live">● Live</div>
+      </div>
+      <div id="map"></div>
+    </div>
+
+    <!-- NEWS + JOBS -->
+    <div class="grid-1-1">
+      <!-- NEWS -->
+      <div class="card" id="news-section">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Tech News Feed</div>
+            <div class="card-subtitle">LATEST STARTUP SIGNALS</div>
+          </div>
+          <div class="card-badge live">● Live</div>
+        </div>
+        <div class="news-list" id="newsList">
+          <!-- populated by JS -->
+        </div>
+      </div>
+      <!-- JOBS -->
+      <div class="card" id="jobs-section">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Hiring Demand</div>
+            <div class="card-subtitle">ACTIVE JOB POSTINGS BY SECTOR</div>
+          </div>
+          <div class="card-badge info">Real-time</div>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          <table class="jobs-table" id="jobsTable">
+            <thead>
+              <tr>
+                <th>Role</th>
+                <th>Company</th>
+                <th>Sector</th>
+                <th>Salary</th>
+              </tr>
+            </thead>
+            <tbody id="jobsBody">
+              <!-- populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+// ============================================
+// SECTOR CONFIG
+// ============================================
+const SECTOR_COLORS = {
+  'AI': { bar: 'rgba(0,229,255,0.85)', border: '#00e5ff', cls: 'sc-AI' },
+  'DevTools': { bar: 'rgba(34,211,238,0.85)', border: '#22d3ee', cls: 'sc-DevTools' },
+  'Fintech': { bar: 'rgba(167,139,250,0.85)', border: '#a78bfa', cls: 'sc-Fintech' },
+  'Cybersecurity': { bar: 'rgba(52,211,153,0.85)', border: '#34d399', cls: 'sc-Cybersecurity' },
+  'Health Tech': { bar: 'rgba(248,113,113,0.85)', border: '#f87171', cls: 'sc-Health' },
+  'Robotics': { bar: 'rgba(251,191,36,0.85)', border: '#fbbf24', cls: 'sc-Robotics' },
+  'Climate Tech': { bar: 'rgba(134,239,172,0.85)', border: '#86efac', cls: 'sc-Climate' },
+};
+
+const NEWS_TYPE_COLORS = {
+  'funding': { bg: 'rgba(16,185,129,0.15)', color: '#10b981' },
+  'product': { bg: 'rgba(0,229,255,0.12)', color: '#00e5ff' },
+  'acquisition': { bg: 'rgba(167,139,250,0.15)', color: '#a78bfa' },
+  'milestone': { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24' },
+  'ipo': { bg: 'rgba(248,113,113,0.12)', color: '#f87171' },
+  'research': { bg: 'rgba(34,211,238,0.12)', color: '#22d3ee' },
+  'deployment': { bg: 'rgba(134,239,172,0.12)', color: '#86efac' },
+  'earnings': { bg: 'rgba(100,116,139,0.15)', color: '#94a3b8' },
+};
+
+let barChartInst, radarChartInst, lineChartInst;
+let mapInst;
+
+// ============================================
+// CLOCK
+// ============================================
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clockDisplay').textContent =
+    now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ============================================
+// SCROLL HELPER
+// ============================================
+function scrollTo(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ============================================
+// CHART.JS DEFAULT SETTINGS
+// ============================================
+Chart.defaults.color = '#64748b';
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.font.size = 11;
+
+// ============================================
+// BAR CHART
+// ============================================
+function initBarChart(trends) {
+  const ctx = document.getElementById('barChart').getContext('2d');
+  const labels = Object.keys(trends);
+  const values = Object.values(trends);
+  const colors = labels.map(l => SECTOR_COLORS[l]?.bar || 'rgba(100,116,139,0.8)');
+  const borders = labels.map(l => SECTOR_COLORS[l]?.border || '#64748b');
+
+  if (barChartInst) barChartInst.destroy();
+  barChartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors,
+        borderColor: borders,
+        borderWidth: 1,
+        borderRadius: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0d1520',
+          borderColor: '#1a2840',
+          borderWidth: 1,
+          titleColor: '#00e5ff',
+          bodyColor: '#e2e8f0',
+          padding: 12,
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
+          border: { display: false },
+          ticks: { color: '#64748b' }
+        },
+        y: {
+          max: 100,
+          grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+          border: { display: false },
+          ticks: { color: '#64748b', stepSize: 25 }
+        }
+      }
+    }
+  });
+}
+
+// ============================================
+// RADAR CHART
+// ============================================
+function initRadarChart(trends) {
+  const ctx = document.getElementById('radarChart').getContext('2d');
+  const labels = Object.keys(trends);
+  const values = Object.values(trends);
+
+  if (radarChartInst) radarChartInst.destroy();
+  radarChartInst = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: 'rgba(0,229,255,0.08)',
+        borderColor: '#00e5ff',
+        borderWidth: 1.5,
+        pointBackgroundColor: '#00e5ff',
+        pointBorderColor: '#050a0f',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0d1520',
+          borderColor: '#1a2840',
+          borderWidth: 1,
+          titleColor: '#00e5ff',
+          bodyColor: '#e2e8f0',
+          padding: 12,
+        }
+      },
+      scales: {
+        r: {
+          angleLines: { color: 'rgba(255,255,255,0.06)' },
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          pointLabels: { color: '#64748b', font: { size: 10 } },
+          ticks: { display: false, stepSize: 25 },
+          min: 0, max: 100
+        }
+      }
+    }
+  });
+}
+
+// ============================================
+// LINE CHART
+// ============================================
+function initLineChart(historical) {
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  const lineColors = ['#00e5ff','#22d3ee','#a78bfa','#34d399','#f87171','#fbbf24','#86efac'];
+  const sectors = Object.keys(historical.datasets);
+  const datasets = sectors.map((s, i) => ({
+    label: s,
+    data: historical.datasets[s],
+    borderColor: lineColors[i % lineColors.length],
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    pointRadius: 3,
+    pointBackgroundColor: lineColors[i % lineColors.length],
+    tension: 0.4,
+  }));
+
+  if (lineChartInst) lineChartInst.destroy();
+  lineChartInst = new Chart(ctx, {
+    type: 'line',
+    data: { labels: historical.labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: { color: '#64748b', usePointStyle: true, pointStyleWidth: 8, padding: 16, font: { size: 10 } }
+        },
+        tooltip: {
+          backgroundColor: '#0d1520',
+          borderColor: '#1a2840',
+          borderWidth: 1,
+          titleColor: '#e2e8f0',
+          bodyColor: '#94a3b8',
+          padding: 12,
+          mode: 'index',
+          intersect: false,
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
+          border: { display: false },
+          ticks: { color: '#64748b' }
+        },
+        y: {
+          max: 100,
+          grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+          border: { display: false },
+          ticks: { color: '#64748b', stepSize: 20 }
+        }
+      }
+    }
+  });
+}
+
+// ============================================
+// TREND BARS (custom HTML)
+// ============================================
+function renderTrendBars(trends) {
+  const container = document.getElementById('trendBars');
+  const sorted = Object.entries(trends).sort((a, b) => b[1] - a[1]);
+  const deltas = { 'AI': '+5', 'DevTools': '+3', 'Cybersecurity': '+2', 'Fintech': '0', 'Health Tech': '+2', 'Robotics': '+1', 'Climate Tech': '0' };
+
+  container.innerHTML = sorted.map(([sector, score]) => {
+    const cfg = SECTOR_COLORS[sector] || {};
+    const delta = deltas[sector] || '0';
+    const deltaClass = delta.startsWith('+') ? 'delta-up' : 'delta-neutral';
+    return `
+    <div class="trend-row">
+      <div class="trend-sector">${sector}</div>
+      <div class="trend-track">
+        <div class="trend-fill" data-val="${score}" style="background: ${cfg.border || '#64748b'};"></div>
+      </div>
+      <div class="trend-score" style="color: ${cfg.border || '#e2e8f0'}">${score}</div>
+      <div class="trend-delta ${deltaClass}">${delta > 0 ? '+' : ''}${delta}</div>
+    </div>`;
+  }).join('');
+
+  // Animate fills
+  setTimeout(() => {
+    container.querySelectorAll('.trend-fill').forEach(el => {
+      el.style.width = el.dataset.val + '%';
+    });
+  }, 100);
+}
+
+// ============================================
+// MAP
+// ============================================
+function initMap(mapData) {
+  if (mapInst) { mapInst.remove(); }
+
+  mapInst = L.map('map', {
+    center: [25, 10],
+    zoom: 2,
+    zoomControl: true,
+    attributionControl: false,
+    preferCanvas: true,
+  });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(mapInst);
+
+  mapData.forEach(city => {
+    const sectorKey = city.dominant_sector.replace(' ', '');
+    const clr = Object.values(SECTOR_COLORS).find(v => v.cls.includes(sectorKey))?.border || '#00e5ff';
+
+    const radius = Math.max(8, Math.min(22, city.startups / 50));
+    const circle = L.circleMarker([city.lat, city.lng], {
+      radius,
+      fillColor: clr,
+      color: clr,
+      weight: 1,
+      opacity: 0.9,
+      fillOpacity: 0.3,
+    }).addTo(mapInst);
+
+    circle.bindPopup(`
+      <div style="font-family: 'DM Mono', monospace; padding: 8px; min-width: 180px; background: #0d1520; border: 1px solid #1a2840; border-radius: 2px; color: #e2e8f0; box-shadow: none;">
+        <div style="font-size: 14px; font-weight: 500; margin-bottom: 8px; color: ${clr}">${city.city}</div>
+        <div style="font-size: 10px; color: #64748b; margin-bottom: 4px;">STARTUPS: <span style="color: #e2e8f0">${city.startups}</span></div>
+        <div style="font-size: 10px; color: #64748b; margin-bottom: 4px;">TOP SECTOR: <span style="color: ${clr}">${city.dominant_sector}</span></div>
+        <div style="font-size: 10px; color: #64748b;">GROWTH: <span style="color: #10b981">+${city.growth}%</span></div>
+      </div>
+    `, { className: 'dark-popup' });
+  });
+}
+
+// ============================================
+// NEWS
+// ============================================
+function renderNews(news) {
+  const container = document.getElementById('newsList');
+  const shown = news.slice(0, 8);
+
+  container.innerHTML = shown.map(item => {
+    const sectorShort = item.sector.replace(' Tech', '').replace(' ', '');
+    const sectorCls = `sc-${sectorShort}`;
+    const typeConfig = NEWS_TYPE_COLORS[item.type] || NEWS_TYPE_COLORS['product'];
+    return `
+    <div class="news-item">
+      <span class="news-sector-tag ${sectorCls}">${item.sector.split(' ')[0]}</span>
+      <div class="news-content">
+        <div class="news-title">${item.title}</div>
+        <div class="news-meta">
+          <span>${item.source}</span>
+          <span>${item.date}</span>
+          <span class="news-type" style="background: ${typeConfig.bg}; color: ${typeConfig.color}">${item.type}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================
+// JOBS
+// ============================================
+function renderJobs(jobs) {
+  const tbody = document.getElementById('jobsBody');
+  const allJobs = [];
+  Object.entries(jobs).forEach(([sector, list]) => {
+    list.forEach(j => allJobs.push({ ...j, sector }));
+  });
+
+  const shown = allJobs.slice(0, 10);
+  tbody.innerHTML = shown.map(job => {
+    const sectorShort = job.sector.replace(' Tech', '').replace(' ', '');
+    const cfg = SECTOR_COLORS[job.sector] || {};
+    return `
+    <tr>
+      <td>
+        <div>${job.title}</div>
+        <div style="font-size: 11px; color: #334155; margin-top: 2px;">${job.location}</div>
+      </td>
+      <td class="job-company">${job.company}</td>
+      <td>
+        <span style="padding: 3px 8px; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.08em; background: rgba(255,255,255,0.04); border: 1px solid #1a2840; color: ${cfg.border || '#64748b'}">
+          ${job.sector}
+        </span>
+      </td>
+      <td style="font-family: 'DM Mono', monospace; font-size: 11px; color: #10b981">${job.salary}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================
+// PREDICTION
+// ============================================
+function renderPrediction(pred) {
+  document.getElementById('predictionText').textContent = pred.message || 'Analysis complete.';
+
+  const list = document.getElementById('predictionList');
+  const top5 = pred.all_predictions.slice(0, 5);
+  const maxMomentum = Math.max(...top5.map(p => Math.abs(p.prediction_6m)));
+
+  list.innerHTML = top5.map((p, i) => {
+    const cfg = SECTOR_COLORS[p.sector] || {};
+    const pct = Math.abs(p.prediction_6m) / maxMomentum * 100;
+    const sign = p.prediction_6m > 0 ? '+' : '';
+    return `
+    <div class="pred-row">
+      <div class="pred-rank">${i + 1}</div>
+      <div class="pred-name" style="color: ${cfg.border || '#e2e8f0'}">${p.sector}</div>
+      <div class="pred-bar">
+        <div class="pred-bar-fill" style="width: ${pct}%; background: ${cfg.border || '#00e5ff'}"></div>
+      </div>
+      <div class="pred-growth" style="color: ${p.prediction_6m > 0 ? '#10b981' : '#ef4444'}">${sign}${p.prediction_6m}%</div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================
+// LOAD ALL DATA
+// ============================================
+async function loadAllData() {
+  document.getElementById('lastUpdated').textContent = 'Refreshing...';
+  try {
+    const [trendsRes, newsRes, jobsRes, predRes, mapRes, histRes] = await Promise.all([
+      fetch('/api/trends'),
+      fetch('/api/news'),
+      fetch('/api/jobs'),
+      fetch('/api/prediction'),
+      fetch('/api/map-data'),
+      fetch('/api/historical'),
+    ]);
+
+    const trends = await trendsRes.json();
+    const news = await newsRes.json();
+    const jobs = await jobsRes.json();
+    const pred = await predRes.json();
+    const mapData = await mapRes.json();
+    const historical = await histRes.json();
+
+    // Sort trends
+    const sortedTrends = Object.fromEntries(
+      Object.entries(trends).sort((a, b) => b[1] - a[1])
+    );
+
+    // Update KPIs
+    document.getElementById('kpi-top').textContent = Math.max(...Object.values(trends));
+    document.getElementById('kpi-jobs').textContent = Object.values(jobs).reduce((a, b) => a + b.length, 0);
+    document.getElementById('kpi-news').textContent = news.length;
+
+    // Render charts
+    initBarChart(sortedTrends);
+    initRadarChart(trends);
+    initLineChart(historical);
+    renderTrendBars(sortedTrends);
+    initMap(mapData);
+    renderNews(news);
+    renderJobs(jobs);
+    renderPrediction(pred);
+
+    document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch (err) {
+    console.error('Failed to load data:', err);
+    document.getElementById('lastUpdated').textContent = 'Error loading data';
+  }
+}
+
+// ============================================
+// INIT
+// ============================================
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const loader = document.getElementById('loader');
+    loader.style.opacity = '0';
+    loader.style.pointerEvents = 'none';
+    setTimeout(() => loader.remove(), 500);
+  }, 2000);
+
+  loadAllData();
+});
+</script>
+</body>
+</html>

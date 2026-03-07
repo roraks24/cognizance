@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Startup Intelligence Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0f;
+    --surface: #0d1520;
+    --border: #1a2840;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --accent3: #22d3ee;
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --green: #10b981;
+    --orange: #f59e0b;
+    --red: #ef4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Radial glow */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80vw;
+    height: 60vh;
+    background: radial-gradient(ellipse, rgba(0,229,255,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 20px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(0,229,255,0.08);
+    backdrop-filter: blur(20px);
+    background: rgba(5,10,15,0.8);
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .nav-logo::before {
+    content: '◆';
+    font-size: 10px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 400;
+    transition: color 0.2s;
+    letter-spacing: 0.03em;
+  }
+
+  .nav-links a:hover { color: var(--text); }
+
+  .nav-cta {
+    padding: 9px 20px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .nav-cta:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  /* HERO */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 120px 48px 80px;
+    z-index: 1;
+  }
+
+  .hero-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border: 1px solid rgba(0,229,255,0.3);
+    border-radius: 2px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.2s forwards;
+  }
+
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: blink 1.2s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(52px, 8vw, 96px);
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    margin-bottom: 32px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.4s forwards;
+  }
+
+  .hero h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .hero-sub {
+    max-width: 600px;
+    font-size: 18px;
+    line-height: 1.7;
+    color: var(--text-muted);
+    font-weight: 300;
+    margin-bottom: 56px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.6s forwards;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.8s forwards;
+  }
+
+  .btn-primary {
+    padding: 16px 40px;
+    background: var(--accent);
+    color: var(--bg);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    font-weight: 500;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  }
+
+  .btn-primary:hover {
+    background: #00b8cc;
+    transform: translateY(-2px);
+  }
+
+  .btn-secondary {
+    padding: 15px 32px;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--text-muted);
+    color: var(--text);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* STATS TICKER */
+  .stats-bar {
+    width: 100%;
+    position: relative;
+    z-index: 1;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: rgba(13,21,32,0.6);
+    padding: 16px 0;
+    overflow: hidden;
+    margin-bottom: 80px;
+  }
+
+  .ticker-track {
+    display: flex;
+    gap: 64px;
+    animation: ticker 30s linear infinite;
+    white-space: nowrap;
+  }
+
+  .ticker-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .ticker-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+
+  .ticker-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .ticker-up { color: var(--green); }
+  .ticker-sep {
+    width: 1px;
+    height: 12px;
+    background: var(--border);
+  }
+
+  @keyframes ticker {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* FEATURES */
+  .features {
+    position: relative;
+    z-index: 1;
+    padding: 0 48px 100px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(36px, 4vw, 56px);
+    line-height: 1.1;
+    margin-bottom: 60px;
+    max-width: 600px;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  .feature-card {
+    background: var(--surface);
+    padding: 40px 32px;
+    transition: background 0.2s;
+    position: relative;
+  }
+
+  .feature-card:hover {
+    background: #111c2e;
+  }
+
+  .feature-icon {
+    font-size: 28px;
+    margin-bottom: 20px;
+    display: block;
+  }
+
+  .feature-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    margin-bottom: 12px;
+  }
+
+  .feature-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  .feature-tag {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 4px 10px;
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.2);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  /* SECTORS PREVIEW */
+  .sectors {
+    position: relative;
+    z-index: 1;
+    padding: 0 48px 100px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .sector-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 40px;
+  }
+
+  .sector-pill {
+    padding: 12px 24px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sector-pill:hover, .sector-pill.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,229,255,0.05);
+  }
+
+  .sector-score {
+    font-size: 10px;
+    padding: 2px 6px;
+    background: rgba(0,229,255,0.1);
+    border-radius: 2px;
+  }
+
+  /* FOOTER */
+  footer {
+    position: relative;
+    z-index: 1;
+    border-top: 1px solid var(--border);
+    padding: 40px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-logo {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+
+  .footer-note {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    opacity: 0.5;
+  }
+
+  /* MINI CHART PREVIEW */
+  .preview-section {
+    position: relative;
+    z-index: 1;
+    padding: 0 48px 100px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .preview-card {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .preview-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), transparent);
+  }
+
+  .mini-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 32px;
+  }
+
+  .mini-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .mini-bar-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    width: 100px;
+    flex-shrink: 0;
+  }
+
+  .mini-bar-track {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+
+  .mini-bar-fill {
+    height: 100%;
+    border-radius: 1px;
+    transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+    width: 0;
+  }
+
+  .mini-bar-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text);
+    width: 32px;
+    text-align: right;
+  }
+
+  @media (max-width: 768px) {
+    nav { padding: 16px 24px; }
+    .hero { padding: 100px 24px 60px; }
+    .features { padding: 0 24px 60px; }
+    .features-grid { grid-template-columns: 1fr; }
+    .sectors { padding: 0 24px 60px; }
+    .preview-section { padding: 0 24px 60px; }
+    footer { padding: 24px; flex-direction: column; gap: 12px; text-align: center; }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">Startup Intelligence Map</div>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#sectors">Sectors</a></li>
+    <li><a href="/dashboard">Dashboard</a></li>
+  </ul>
+  <a href="/dashboard" class="nav-cta">Launch Dashboard →</a>
+</nav>
+
+<section class="hero">
+  <div class="hero-label">
+    <span class="live-dot"></span>
+    Live Trend Analysis · 7 Sectors · Real-time Intelligence
+  </div>
+  <h1>What startups are<br>growing <em>right now?</em></h1>
+  <p class="hero-sub">Real-time intelligence across GitHub activity, job market signals, and tech news — synthesized into a single trend score for every major startup sector.</p>
+  <div class="hero-actions">
+    <a href="/dashboard" class="btn-primary">View Startup Trends</a>
+    <a href="#features" class="btn-secondary">How it works</a>
+  </div>
+</section>
+
+<div class="stats-bar">
+  <div class="ticker-track" id="ticker">
+    <div class="ticker-item"><span class="ticker-label">AI TREND SCORE</span><span class="ticker-value ticker-up">87 ↑</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">DEVTOOLS</span><span class="ticker-value ticker-up">65 ↑</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">FINTECH</span><span class="ticker-value">54</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">CYBERSECURITY</span><span class="ticker-value ticker-up">51 ↑</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">HEALTH TECH</span><span class="ticker-value">42</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">ROBOTICS</span><span class="ticker-value">32</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">CLIMATE TECH</span><span class="ticker-value">29</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">TOTAL STARTUPS TRACKED</span><span class="ticker-value">4,821</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">CITIES MONITORED</span><span class="ticker-value">14</span></div>
+    <div class="ticker-sep"></div>
+    <!-- duplicated for seamless loop -->
+    <div class="ticker-item"><span class="ticker-label">AI TREND SCORE</span><span class="ticker-value ticker-up">87 ↑</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">DEVTOOLS</span><span class="ticker-value ticker-up">65 ↑</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">FINTECH</span><span class="ticker-value">54</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">CYBERSECURITY</span><span class="ticker-value ticker-up">51 ↑</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">HEALTH TECH</span><span class="ticker-value">42</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">ROBOTICS</span><span class="ticker-value">32</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">CLIMATE TECH</span><span class="ticker-value">29</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">TOTAL STARTUPS TRACKED</span><span class="ticker-value">4,821</span></div>
+    <div class="ticker-sep"></div>
+    <div class="ticker-item"><span class="ticker-label">CITIES MONITORED</span><span class="ticker-value">14</span></div>
+  </div>
+</div>
+
+<section class="preview-section" id="features">
+  <div class="section-label">// Intelligence Preview</div>
+  <div class="section-title">Trend scores,<br>computed live.</div>
+  <div class="preview-card">
+    <div class="section-label">SECTOR TREND SCORES — JANUARY 2025</div>
+    <div class="mini-bars" id="previewBars">
+      <div class="mini-bar-row">
+        <span class="mini-bar-label">AI</span>
+        <div class="mini-bar-track"><div class="mini-bar-fill" data-val="87" style="background: linear-gradient(90deg, #00e5ff, #7c3aed);"></div></div>
+        <span class="mini-bar-val">87</span>
+      </div>
+      <div class="mini-bar-row">
+        <span class="mini-bar-label">DevTools</span>
+        <div class="mini-bar-track"><div class="mini-bar-fill" data-val="65" style="background: linear-gradient(90deg, #22d3ee, #06b6d4);"></div></div>
+        <span class="mini-bar-val">65</span>
+      </div>
+      <div class="mini-bar-row">
+        <span class="mini-bar-label">Fintech</span>
+        <div class="mini-bar-track"><div class="mini-bar-fill" data-val="54" style="background: linear-gradient(90deg, #a78bfa, #7c3aed);"></div></div>
+        <span class="mini-bar-val">54</span>
+      </div>
+      <div class="mini-bar-row">
+        <span class="mini-bar-label">Cybersecurity</span>
+        <div class="mini-bar-track"><div class="mini-bar-fill" data-val="51" style="background: linear-gradient(90deg, #34d399, #10b981);"></div></div>
+        <span class="mini-bar-val">51</span>
+      </div>
+      <div class="mini-bar-row">
+        <span class="mini-bar-label">Health Tech</span>
+        <div class="mini-bar-track"><div class="mini-bar-fill" data-val="42" style="background: linear-gradient(90deg, #f87171, #ef4444);"></div></div>
+        <span class="mini-bar-val">42</span>
+      </div>
+      <div class="mini-bar-row">
+        <span class="mini-bar-label">Robotics</span>
+        <div class="mini-bar-track"><div class="mini-bar-fill" data-val="32" style="background: linear-gradient(90deg, #fbbf24, #f59e0b);"></div></div>
+        <span class="mini-bar-val">32</span>
+      </div>
+      <div class="mini-bar-row">
+        <span class="mini-bar-label">Climate Tech</span>
+        <div class="mini-bar-track"><div class="mini-bar-fill" data-val="29" style="background: linear-gradient(90deg, #86efac, #22c55e);"></div></div>
+        <span class="mini-bar-val">29</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="how">
+  <div class="section-label">// How It Works</div>
+  <div class="section-title">Three signals.<br>One score.</div>
+  <div class="features-grid">
+    <div class="feature-card">
+      <span class="feature-icon">⌥</span>
+      <div class="feature-name">GitHub Signal</div>
+      <p class="feature-desc">We track repository stars, topics, and creation rates across thousands of projects to detect technology momentum before it hits mainstream news.</p>
+      <span class="feature-tag">40% Weight</span>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">◈</span>
+      <div class="feature-name">Job Market Signal</div>
+      <p class="feature-desc">Hiring patterns reveal where companies are betting real money. A surge in ML engineer postings predicts AI investment 6 months ahead of funding announcements.</p>
+      <span class="feature-tag">30% Weight</span>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">◎</span>
+      <div class="feature-name">News Signal</div>
+      <p class="feature-desc">Funding rounds, acquisitions, and product launches across TechCrunch, Bloomberg, and Hacker News surface which sectors are capturing investor attention right now.</p>
+      <span class="feature-tag">30% Weight</span>
+    </div>
+  </div>
+</section>
+
+<section class="sectors" id="sectors">
+  <div class="section-label">// Sectors Monitored</div>
+  <div class="section-title">Seven sectors.<br>Comprehensive coverage.</div>
+  <div class="sector-pills">
+    <div class="sector-pill active">🤖 AI / Machine Learning <span class="sector-score">87</span></div>
+    <div class="sector-pill">🛠 DevTools <span class="sector-score">65</span></div>
+    <div class="sector-pill">💳 Fintech <span class="sector-score">54</span></div>
+    <div class="sector-pill">🔐 Cybersecurity <span class="sector-score">51</span></div>
+    <div class="sector-pill">🏥 Health Tech <span class="sector-score">42</span></div>
+    <div class="sector-pill">🤖 Robotics <span class="sector-score">32</span></div>
+    <div class="sector-pill">🌱 Climate Tech <span class="sector-score">29</span></div>
+  </div>
+  <div style="margin-top: 48px; text-align: center;">
+    <a href="/dashboard" class="btn-primary">Explore Full Dashboard →</a>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">◆ Startup Intelligence Map</div>
+  <div class="footer-note">Hackathon Prototype · Data refreshed every 6h · Mock data for demo</div>
+</footer>
+
+<script>
+  // Animate bars on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.querySelectorAll('.mini-bar-fill').forEach(bar => {
+          const val = bar.dataset.val;
+          setTimeout(() => { bar.style.width = val + '%'; }, 200);
+        });
+      }
+    });
+  }, { threshold: 0.3 });
+
+  const preview = document.querySelector('.preview-card');
+  if (preview) observer.observe(preview);
+
+  // Pill interaction
+  document.querySelectorAll('.sector-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.sector-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
