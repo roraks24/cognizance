@@ -1,3 +1,15 @@
+from dotenv import load_dotenv
+import os
+import requests
+
+load_dotenv()
+
+GITHUB_API_KEY = os.getenv("GITHUB_API_KEY")
+NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+ADZUNA_APP_ID = os.getenv("ADZUNA_APP_ID")
+ADZUNA_API_KEY = os.getenv("ADZUNA_API_KEY")
+
+
 import json
 import os
 import random
@@ -141,13 +153,74 @@ class DataProcessor:
         self.classifier = SectorClassifier()
 
     def get_github_data(self):
-        return MOCK_GITHUB_DATA
+     url = "https://api.github.com/search/repositories?q=ai+startup&sort=stars&order=desc"
+
+     headers = {
+        "Authorization": f"token {GITHUB_API_KEY}"
+     }
+
+     response = requests.get(url, headers=headers)
+     data = response.json()
+
+     repos = []
+     for repo in data["items"][:10]:
+        repos.append({
+            "name": repo["name"],
+            "stars": repo["stargazers_count"],
+            "description": repo["description"],
+            "topics": repo.get("topics", [])
+        })
+
+     return {"AI": repos}
 
     def get_news_data(self):
-        return MOCK_NEWS_DATA
+
+     url = f"https://newsapi.org/v2/everything?q=startup&apiKey={NEWS_API_KEY}"
+
+     response = requests.get(url)
+     articles = response.json()["articles"]
+
+     news = []
+
+     for a in articles[:10]:
+
+      text = (a.get("title") or "") + " " + (a.get("description") or "")
+      sector = self.classifier.classify(text)
+
+     news.append({
+        "title": a["title"],
+        "sector": sector if sector else "AI",
+        "source": a["source"]["name"],
+        "date": a["publishedAt"]
+      })
+
+     return news
 
     def get_job_data(self):
+
+     url = f"https://api.adzuna.com/v1/api/jobs/us/search/1?app_id={ADZUNA_APP_ID}&app_key={ADZUNA_API_KEY}&what=AI"
+
+     response = requests.get(url)
+
+     if response.status_code != 200:
         return MOCK_JOB_DATA
+
+     data = response.json()
+
+     if "results" not in data:
+        return MOCK_JOB_DATA
+
+     jobs = []
+
+     for job in data["results"][:10]:
+        jobs.append({
+            "title": job.get("title"),
+            "company": job.get("company", {}).get("display_name"),
+            "location": job.get("location", {}).get("display_name"),
+            "salary": job.get("salary_min")
+        })
+
+     return {"AI": jobs}
 
     def get_startup_data(self):
         startups = {}
@@ -226,3 +299,4 @@ class DataProcessor:
             "message": f"{top['sector']} is predicted to grow {top['prediction_6m']}% in the next 6 months based on current momentum.",
             "all_predictions": predictions
         }
+
